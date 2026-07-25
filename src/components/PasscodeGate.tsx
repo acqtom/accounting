@@ -2,7 +2,9 @@ import { useState, type FormEvent, type ReactNode } from 'react';
 import { CARD_CLASS } from '../lib/ui';
 import { IconBadge, LockIcon } from './icons';
 
-const UNLOCK_KEY = 'accounting-hub-unlocked';
+// bumped to force a fresh passcode prompt on browsers that already had the
+// old key set (e.g. from earlier testing)
+const UNLOCK_KEY = 'accounting-hub-unlocked-v2';
 const PASSCODE = 'acc123';
 
 export default function PasscodeGate({ children }: { children: ReactNode }) {
