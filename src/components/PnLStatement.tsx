@@ -1,7 +1,9 @@
 import type { MonthData } from '../lib/types';
 import { calcTotals, formatCurrency, monthLabel } from '../lib/calculations';
 import { uid } from '../lib/storage';
+import { CARD_CLASS } from '../lib/ui';
 import { CurrencyInput, ComputedCurrency, PercentInline, TextInput } from './inputs';
+import { DocumentIcon, IconBadge, LiveDot } from './icons';
 
 interface Props {
   month: MonthData;
@@ -63,10 +65,16 @@ export default function PnLStatement({ month, onChange }: Props) {
     }));
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8">
-      <h2 className="text-3xl font-bold text-gray-900 mb-6">
-        Monthly PnL Statement (Business) — {monthLabel(month.key)}
-      </h2>
+    <div className={`${CARD_CLASS} p-8`}>
+      <div className="flex items-start justify-between mb-2">
+        <h2 className="text-3xl font-bold text-gray-900">
+          Monthly PnL Statement (Business) — {monthLabel(month.key)}
+        </h2>
+        <IconBadge>
+          <DocumentIcon className="w-5 h-5" />
+        </IconBadge>
+      </div>
+      <LiveDot className="mb-6" />
 
       <table className="w-full border-collapse">
         <tbody>
@@ -93,7 +101,7 @@ export default function PnLStatement({ month, onChange }: Props) {
           ))}
           <tr>
             <td colSpan={3} className="pt-1 pb-2">
-              <button onClick={addClient} className="text-xs text-blue-600 hover:text-blue-700 font-medium">
+              <button onClick={addClient} className="text-xs text-indigo-600 hover:text-indigo-700 font-medium">
                 + Add client
               </button>
             </td>
@@ -229,7 +237,7 @@ export default function PnLStatement({ month, onChange }: Props) {
                     </button>
                   </div>
                 ))}
-                <button onClick={addSoftware} className="text-xs text-blue-600 hover:text-blue-700 font-medium">
+                <button onClick={addSoftware} className="text-xs text-indigo-600 hover:text-indigo-700 font-medium">
                   + Add software
                 </button>
               </div>
@@ -264,7 +272,7 @@ export default function PnLStatement({ month, onChange }: Props) {
                     onChange((m) => ({ ...m, fxRateUsdToNzd: e.target.value === '' ? 0 : parseFloat(e.target.value) }))
                   }
                   onFocus={(e) => e.target.select()}
-                  className="w-16 ml-1 bg-transparent border-b border-gray-300 outline-none focus:bg-blue-50 rounded px-1 text-gray-600"
+                  className="w-16 ml-1 bg-transparent border-b border-gray-300 outline-none focus:bg-indigo-50 rounded px-1 text-gray-600"
                 />
               </span>
             </td>

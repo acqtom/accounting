@@ -36,7 +36,7 @@ function RemovableField({
 }) {
   if (!visible) {
     return (
-      <button onClick={onAdd} data-html2canvas-ignore="true" className="text-xs text-blue-600 hover:text-blue-700 font-medium">
+      <button onClick={onAdd} data-html2canvas-ignore="true" className="text-xs text-indigo-600 hover:text-indigo-700 font-medium">
         {addLabel}
       </button>
     );
@@ -264,11 +264,11 @@ export default function CreateInvoiceModal({ invoiceNumber, savedClients, onClos
               </div>
               <div>
                 <div className="text-xs font-medium text-gray-500 mb-1">Invoice Date</div>
-                <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="text-sm text-gray-800 outline-none focus:bg-blue-50 rounded px-1 -mx-1" />
+                <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="text-sm text-gray-800 outline-none focus:bg-indigo-50 rounded px-1 -mx-1" />
               </div>
               <div>
                 <div className="text-xs font-medium text-gray-500 mb-1">Due Date</div>
-                <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="text-sm text-gray-800 outline-none focus:bg-blue-50 rounded px-1 -mx-1" />
+                <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="text-sm text-gray-800 outline-none focus:bg-indigo-50 rounded px-1 -mx-1" />
               </div>
             </div>
             <button onClick={onClose} data-html2canvas-ignore="true" className="text-gray-400 hover:text-gray-700 text-lg ml-4" aria-label="Close">
@@ -289,11 +289,11 @@ export default function CreateInvoiceModal({ invoiceNumber, savedClients, onClos
                     onChange={(e) => setFromAddress(e.target.value)}
                     placeholder="Address"
                     rows={2}
-                    className="block w-full text-sm text-gray-600 outline-none focus:bg-blue-50 rounded px-1 -mx-1 resize-none"
+                    className="block w-full text-sm text-gray-600 outline-none focus:bg-indigo-50 rounded px-1 -mx-1 resize-none"
                   />
                 </RemovableField>
                 <RemovableField visible={showFromEmail} onRemove={() => setShowFromEmail(false)} onAdd={() => setShowFromEmail(true)} addLabel="+ Add email">
-                  <TextInput value={fromEmail} onChange={setFromEmail} className="block w-full text-sm text-blue-600" />
+                  <TextInput value={fromEmail} onChange={setFromEmail} className="block w-full text-sm text-indigo-600" />
                 </RemovableField>
               </div>
             </div>
@@ -307,11 +307,11 @@ export default function CreateInvoiceModal({ invoiceNumber, savedClients, onClos
                     onChange={(e) => setToAddress(e.target.value)}
                     placeholder="Address"
                     rows={2}
-                    className="block w-full text-sm text-gray-600 outline-none focus:bg-blue-50 rounded px-1 -mx-1 resize-none"
+                    className="block w-full text-sm text-gray-600 outline-none focus:bg-indigo-50 rounded px-1 -mx-1 resize-none"
                   />
                 </RemovableField>
                 <RemovableField visible={showToEmail} onRemove={() => setShowToEmail(false)} onAdd={() => setShowToEmail(true)} addLabel="+ Add email">
-                  <TextInput value={toEmail} onChange={setToEmail} className="block w-full text-sm text-blue-600" />
+                  <TextInput value={toEmail} onChange={setToEmail} className="block w-full text-sm text-indigo-600" />
                 </RemovableField>
               </div>
             </div>
@@ -335,7 +335,7 @@ export default function CreateInvoiceModal({ invoiceNumber, savedClients, onClos
                     value={it.qty}
                     onChange={(e) => updateItem(it.id, { qty: e.target.value === '' ? 0 : parseFloat(e.target.value) })}
                     onFocus={(e) => e.target.select()}
-                    className="text-sm text-right bg-transparent outline-none focus:bg-blue-50 rounded px-1"
+                    className="text-sm text-right bg-transparent outline-none focus:bg-indigo-50 rounded px-1"
                   />
                   <CurrencyInput value={it.rate} onChange={(v) => updateItem(it.id, { rate: v })} />
                   <div className="text-sm text-right text-gray-800 px-1">{formatCurrency(it.qty * it.rate)}</div>
@@ -350,7 +350,7 @@ export default function CreateInvoiceModal({ invoiceNumber, savedClients, onClos
                 </div>
               ))}
             </div>
-            <button onClick={addItem} data-html2canvas-ignore="true" className="text-xs text-blue-600 hover:text-blue-700 font-medium mt-2">
+            <button onClick={addItem} data-html2canvas-ignore="true" className="text-xs text-indigo-600 hover:text-indigo-700 font-medium mt-2">
               + New line item
             </button>
           </div>
@@ -384,7 +384,7 @@ export default function CreateInvoiceModal({ invoiceNumber, savedClients, onClos
           <button
             onClick={handleSave}
             disabled={isSaving}
-            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-60 rounded-lg shadow-sm transition-colors"
+            className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 rounded-lg shadow-sm transition-colors"
           >
             {isSaving ? 'Saving…' : 'Save Invoice'}
           </button>

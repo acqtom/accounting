@@ -6,6 +6,8 @@ import CapitalAllocationChart from './components/CapitalAllocationChart';
 import CreateInvoiceModal from './components/CreateInvoiceModal';
 import { useAppData } from './lib/storage';
 import { calcTotals, currentMonthKey, formatCurrency, shiftMonthKey } from './lib/calculations';
+import { CARD_CLASS } from './lib/ui';
+import { IconBadge, LiveDot, ReceiptIcon } from './components/icons';
 import type { Invoice, SavedClient } from './lib/types';
 
 export default function App() {
@@ -50,7 +52,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-100">
       <TopBar
         selectedMonth={selectedMonth}
         onSelectMonth={setSelectedMonth}
@@ -73,8 +75,14 @@ export default function App() {
             <CapitalAllocationChart netIncomeNzd={netPersonalIncomeNzd} />
 
             {data.invoices.length > 0 && (
-              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8">
-                <h2 className="text-xl font-semibold text-gray-900 mb-4">Recent Invoices</h2>
+              <div className={`${CARD_CLASS} p-8`}>
+                <div className="flex items-start justify-between mb-1">
+                  <h2 className="text-xl font-semibold text-gray-900">Recent Invoices</h2>
+                  <IconBadge>
+                    <ReceiptIcon className="w-5 h-5" />
+                  </IconBadge>
+                </div>
+                <LiveDot className="mb-4" />
                 <div className="divide-y divide-gray-100">
                   {data.invoices.map((inv) => {
                     const total = inv.items.reduce((sum, i) => sum + i.qty * i.rate, 0);

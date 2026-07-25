@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react';
 import { calcCapitalAllocation } from '../lib/calculations';
 import { formatCurrency } from '../lib/calculations';
+import { CARD_CLASS } from '../lib/ui';
+import { IconBadge, LiveDot, PieChartIcon } from './icons';
 
 interface Props {
   netIncomeNzd: number;
@@ -49,9 +51,15 @@ export default function CapitalAllocationChart({ netIncomeNzd }: Props) {
   const hoveredSlice = slices.find((s) => s.key === hovered);
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-10">
-      <h2 className="text-xl font-semibold text-gray-900 mb-1">Capital Allocation</h2>
-      <p className="text-sm text-gray-500 mb-8">Where this month's net income (NZD) should go</p>
+    <div className={`${CARD_CLASS} p-10`}>
+      <div className="flex items-start justify-between mb-1">
+        <h2 className="text-xl font-semibold text-gray-900">Capital Allocation</h2>
+        <IconBadge>
+          <PieChartIcon className="w-5 h-5" />
+        </IconBadge>
+      </div>
+      <p className="text-sm text-gray-500 mb-2">Where this month's net income (NZD) should go</p>
+      <LiveDot className="mb-6" />
 
       {total <= 0 ? (
         <div className="flex items-center justify-center h-64 text-sm text-gray-400">

@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react';
 import type { MonthData } from '../lib/types';
 import { calcTotals, currentMonthKey, formatCurrency, monthLabel, shiftMonthKey } from '../lib/calculations';
+import { CARD_CLASS } from '../lib/ui';
+import { ChartLineIcon, IconBadge, LiveDot } from './icons';
 
 interface Props {
   getMonth: (key: string) => MonthData;
@@ -71,12 +73,18 @@ export default function IncomeTrendChart({ getMonth, monthsWithData, selectedMon
     t === 0 ? '$0' : `${t < 0 ? '-' : ''}$${Math.abs(t) >= 1000 ? `${Math.abs(t) / 1000}k` : Math.abs(t)}`;
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-10">
-      <div className="flex items-baseline justify-between mb-6">
+    <div className={`${CARD_CLASS} p-10`}>
+      <div className="flex items-start justify-between mb-1">
         <div>
           <h2 className="text-xl font-semibold text-gray-900">Income Trend</h2>
           <p className="text-sm text-gray-500">Net Personal Income (NZD), month over month</p>
         </div>
+        <IconBadge>
+          <ChartLineIcon className="w-5 h-5" />
+        </IconBadge>
+      </div>
+      <div className="flex items-center justify-between mb-6">
+        <LiveDot />
         {hoveredPoint && (
           <div className="text-right">
             <div className="text-xs text-gray-500">{monthLabel(hoveredPoint.key)}</div>

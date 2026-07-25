@@ -37,7 +37,7 @@ export default function TopBar({ selectedMonth, onSelectMonth, monthsWithData, o
           </button>
           <button
             onClick={onCreateInvoice}
-            className="inline-flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg shadow-sm transition-colors"
+            className="inline-flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-4 py-2 rounded-lg shadow-sm transition-colors"
           >
             <span className="text-base leading-none">+</span> Create Invoice
           </button>

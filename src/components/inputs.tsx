@@ -16,7 +16,7 @@ export function CurrencyInput({ value, onChange, underline, align = 'right' }: C
         value={Number.isFinite(value) ? value : 0}
         onChange={(e) => onChange(e.target.value === '' ? 0 : parseFloat(e.target.value))}
         onFocus={(e) => e.target.select()}
-        className={`w-full bg-transparent text-sm text-gray-900 text-right outline-none focus:bg-blue-50 rounded px-1 py-0.5 transition-colors ${
+        className={`w-full bg-transparent text-sm text-gray-900 text-right outline-none focus:bg-indigo-50 rounded px-1 py-0.5 transition-colors ${
           underline ? 'border-b border-gray-300' : ''
         }`}
       />
@@ -46,7 +46,7 @@ export function PercentInline({ value, onChange }: { value: number; onChange: (v
         value={value}
         onChange={(e) => onChange(e.target.value === '' ? 0 : parseFloat(e.target.value))}
         onFocus={(e) => e.target.select()}
-        className="w-10 bg-transparent text-gray-500 outline-none focus:bg-blue-50 rounded text-center"
+        className="w-10 bg-transparent text-gray-500 outline-none focus:bg-indigo-50 rounded text-center"
       />
       %)
     </span>
@@ -59,7 +59,7 @@ export function TextInput({ value, onChange, className = '' }: { value: string; 
       type="text"
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className={`bg-transparent outline-none focus:bg-blue-50 rounded px-1 py-0.5 transition-colors ${className}`}
+      className={`bg-transparent outline-none focus:bg-indigo-50 rounded px-1 py-0.5 transition-colors ${className}`}
     />
   );
 }
