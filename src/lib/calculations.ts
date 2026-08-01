@@ -45,8 +45,8 @@ export function calcTotals(month: MonthData) {
 
   const grossPortfolioRevenue = totalPortfolioRevenue + totalOtherRevenue - totalClientRevenueShare;
 
-  const setterPayroll = grossPortfolioRevenue * (month.expenses.setterPayrollPercent / 100);
-  const closerPayroll = grossPortfolioRevenue * (month.expenses.closerPayrollPercent / 100);
+  const setterPayroll = totalPortfolioRevenue * (month.expenses.setterPayrollPercent / 100);
+  const closerPayroll = totalPortfolioRevenue * (month.expenses.closerPayrollPercent / 100);
   const cmoBasePay = CMO_BASE_PAY_USD;
   const cmoEquityAlex = (alexClient?.revenue ?? 0) * (month.expenses.cmoEquityAlexPercent / 100);
   const cmoEquityAdriel = (adrielClient?.revenue ?? 0) * (month.expenses.cmoEquityAdrielPercent / 100);
