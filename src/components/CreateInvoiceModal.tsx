@@ -1,8 +1,8 @@
 import { useMemo, useRef, useState } from 'react';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas-pro';
-import type { Invoice, InvoiceLineItem, SavedClient } from '../lib/types';
-import { currentMonthKey, formatCurrency, monthLabel } from '../lib/calculations';
+import type { Invoice, InvoiceLineItem, LineItem, SavedClient } from '../lib/types';
+import { currentMonthKey, formatCurrency, invoiceTotal, monthLabel } from '../lib/calculations';
 import { uid } from '../lib/storage';
 import { ComputedCurrency, CurrencyInput, TextInput } from './inputs';
 
@@ -71,6 +71,7 @@ export default function CreateInvoiceModal({ invoiceNumber, savedClients, onClos
   const [showToAddress, setShowToAddress] = useState(true);
   const [showToEmail, setShowToEmail] = useState(true);
   const [items, setItems] = useState<InvoiceLineItem[]>([{ id: uid(), description: '', qty: 1, rate: 0 }]);
+  const [softwareCosts, setSoftwareCosts] = useState<LineItem[]>([]);
   const [qrMissing, setQrMissing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -82,27 +83,25 @@ export default function CreateInvoiceModal({ invoiceNumber, savedClients, onClos
 
   const printRef = useRef<HTMLDivElement>(null);
 
-  const total = useMemo(() => items.reduce((sum, i) => sum + i.qty * i.rate, 0), [items]);
-
   const grossCollectedRevenue = calcTotalRevenue - calcProcessingFees - calcRefunds;
-  const grossCollectedRevenueShare = grossCollectedRevenue * (calcPercent / 100);
+  const grossRevenueShareAmount = grossCollectedRevenue * (calcPercent / 100);
+  const grossRevenueShareLabel = `${monthLabel(calcMonth)} — ${calcPercent}% of gross collected revenue`;
 
-  const addCalculatedLineItem = () =>
-    setItems((prev) => [
-      ...prev,
-      {
-        id: uid(),
-        description: `${monthLabel(calcMonth)} — ${calcPercent}% of gross collected revenue`,
-        qty: 1,
-        rate: grossCollectedRevenueShare,
-      },
-    ]);
+  const itemsTotal = useMemo(() => items.reduce((sum, i) => sum + i.qty * i.rate, 0), [items]);
+  const softwareCostsTotal = useMemo(() => softwareCosts.reduce((sum, s) => sum + s.amount, 0), [softwareCosts]);
+  const total = invoiceTotal({ items, softwareCosts, grossRevenueShareAmount });
 
   const updateItem = (id: string, patch: Partial<InvoiceLineItem>) =>
     setItems((prev) => prev.map((it) => (it.id === id ? { ...it, ...patch } : it)));
 
   const addItem = () => setItems((prev) => [...prev, { id: uid(), description: '', qty: 1, rate: 0 }]);
   const removeItem = (id: string) => setItems((prev) => prev.filter((it) => it.id !== id));
+
+  const updateSoftwareCost = (id: string, patch: Partial<LineItem>) =>
+    setSoftwareCosts((prev) => prev.map((s) => (s.id === id ? { ...s, ...patch } : s)));
+
+  const addSoftwareCost = () => setSoftwareCosts((prev) => [...prev, { id: uid(), name: '', amount: 0 }]);
+  const removeSoftwareCost = (id: string) => setSoftwareCosts((prev) => prev.filter((s) => s.id !== id));
 
   const loadSavedClient = (c: SavedClient) => {
     setFromName(c.fromName);
@@ -233,6 +232,9 @@ export default function CreateInvoiceModal({ invoiceNumber, savedClients, onClos
         toAddress: showToAddress ? toAddress : '',
         toEmail: showToEmail ? toEmail : '',
         items,
+        softwareCosts,
+        grossRevenueShareLabel,
+        grossRevenueShareAmount,
         createdAt: new Date().toISOString(),
       });
     } finally {
@@ -387,14 +389,12 @@ export default function CreateInvoiceModal({ invoiceNumber, savedClients, onClos
                   %
                 </span>
                 <div className="w-32">
-                  <ComputedCurrency value={formatCurrency(grossCollectedRevenueShare)} bold />
+                  <ComputedCurrency value={formatCurrency(grossRevenueShareAmount)} bold />
                 </div>
               </div>
-              <div className="flex justify-end pt-1">
-                <button onClick={addCalculatedLineItem} className="text-xs text-indigo-600 hover:text-indigo-700 font-medium">
-                  + Add as line item
-                </button>
-              </div>
+              <p className="text-xs text-gray-400 pt-1">
+                Automatically added to the invoice total below as “{grossRevenueShareLabel}”.
+              </p>
             </div>
           </div>
 
@@ -436,6 +436,34 @@ export default function CreateInvoiceModal({ invoiceNumber, savedClients, onClos
             </button>
           </div>
 
+          <div className="mb-8">
+            <div className="text-xs font-medium text-gray-500 mb-2">Software Costs</div>
+            <div className="border border-gray-200 rounded-lg overflow-hidden">
+              <div className="grid grid-cols-[1fr_110px_28px] bg-gray-50 text-xs font-medium text-gray-500 px-3 py-2">
+                <div>Description</div>
+                <div className="text-right">Amount</div>
+                <div />
+              </div>
+              {softwareCosts.map((s) => (
+                <div key={s.id} className="group grid grid-cols-[1fr_110px_28px] items-center px-3 py-2 border-t border-gray-100">
+                  <TextInput value={s.name} onChange={(v) => updateSoftwareCost(s.id, { name: v })} className="text-sm text-gray-800" />
+                  <CurrencyInput value={s.amount} onChange={(v) => updateSoftwareCost(s.id, { amount: v })} />
+                  <button
+                    onClick={() => removeSoftwareCost(s.id)}
+                    data-html2canvas-ignore="true"
+                    className="opacity-0 group-hover:opacity-100 text-gray-300 hover:text-red-500 transition-opacity text-xs justify-self-end"
+                    aria-label="Remove software cost"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+            </div>
+            <button onClick={addSoftwareCost} data-html2canvas-ignore="true" className="text-xs text-indigo-600 hover:text-indigo-700 font-medium mt-2">
+              + New software cost
+            </button>
+          </div>
+
           <div className="grid grid-cols-2 gap-8 items-end">
             <div>
               {qrMissing ? (
@@ -452,6 +480,26 @@ export default function CreateInvoiceModal({ invoiceNumber, savedClients, onClos
               )}
             </div>
             <div className="text-right">
+              {(softwareCostsTotal !== 0 || grossRevenueShareAmount !== 0) && (
+                <div className="space-y-1 mb-3 text-sm">
+                  <div className="flex items-center justify-between gap-8">
+                    <span className="text-gray-500">Line items</span>
+                    <span className="text-gray-700">{formatCurrency(itemsTotal)}</span>
+                  </div>
+                  {softwareCostsTotal !== 0 && (
+                    <div className="flex items-center justify-between gap-8">
+                      <span className="text-gray-500">Software costs</span>
+                      <span className="text-gray-700">{formatCurrency(softwareCostsTotal)}</span>
+                    </div>
+                  )}
+                  {grossRevenueShareAmount !== 0 && (
+                    <div className="flex items-center justify-between gap-8">
+                      <span className="text-gray-500">{grossRevenueShareLabel}</span>
+                      <span className="text-gray-700">{formatCurrency(grossRevenueShareAmount)}</span>
+                    </div>
+                  )}
+                </div>
+              )}
               <div className="text-xs font-medium text-gray-500 mb-1">Total</div>
               <div className="text-3xl font-bold text-gray-900">{formatCurrency(total)}</div>
             </div>

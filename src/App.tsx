@@ -5,7 +5,7 @@ import IncomeTrendChart from './components/IncomeTrendChart';
 import CapitalAllocationChart from './components/CapitalAllocationChart';
 import CreateInvoiceModal from './components/CreateInvoiceModal';
 import { useAppData } from './lib/storage';
-import { calcTotals, currentMonthKey, formatCurrency, shiftMonthKey } from './lib/calculations';
+import { calcTotals, currentMonthKey, formatCurrency, invoiceTotal, shiftMonthKey } from './lib/calculations';
 import { CARD_CLASS } from './lib/ui';
 import { IconBadge, LiveDot, ReceiptIcon } from './components/icons';
 import type { Invoice, SavedClient } from './lib/types';
@@ -85,7 +85,7 @@ export default function App() {
                 <LiveDot className="mb-4" />
                 <div className="divide-y divide-gray-100">
                   {data.invoices.map((inv) => {
-                    const total = inv.items.reduce((sum, i) => sum + i.qty * i.rate, 0);
+                    const total = invoiceTotal(inv);
                     return (
                       <div key={inv.id} className="flex items-center justify-between py-3 text-sm">
                         <div>

@@ -1,4 +1,4 @@
-import type { ClientRevenue, MonthData } from './types';
+import type { ClientRevenue, Invoice, MonthData } from './types';
 
 const BONUS_TIER_REVENUE = 40000;
 const BONUS_PER_TIER = 1000;
@@ -106,6 +106,14 @@ export function calcCapitalAllocation(netIncomeNzd: number): CapitalAllocation {
   const checking = remaining - businessBank;
 
   return { total, software, rent, food, businessBank, checking };
+}
+
+// Older saved invoices predate softwareCosts/grossRevenueShareAmount, so both
+// are optional on read — treat missing as zero rather than poisoning the sum with NaN.
+export function invoiceTotal(invoice: Pick<Invoice, 'items' | 'softwareCosts' | 'grossRevenueShareAmount'>): number {
+  const itemsTotal = invoice.items.reduce((sum, i) => sum + i.qty * i.rate, 0);
+  const softwareCostsTotal = (invoice.softwareCosts ?? []).reduce((sum, s) => sum + s.amount, 0);
+  return itemsTotal + softwareCostsTotal + (invoice.grossRevenueShareAmount ?? 0);
 }
 
 export function formatCurrency(value: number, opts: { sign?: boolean } = {}): string {

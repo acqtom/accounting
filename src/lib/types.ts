@@ -43,6 +43,9 @@ export interface Invoice {
   toAddress: string;
   toEmail: string;
   items: InvoiceLineItem[];
+  softwareCosts: LineItem[];
+  grossRevenueShareLabel: string;
+  grossRevenueShareAmount: number;
   createdAt: string;
 }
 
