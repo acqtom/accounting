@@ -4,7 +4,7 @@ import html2canvas from 'html2canvas-pro';
 import type { Invoice, InvoiceLineItem, SavedClient } from '../lib/types';
 import { formatCurrency } from '../lib/calculations';
 import { uid } from '../lib/storage';
-import { CurrencyInput, TextInput } from './inputs';
+import { ComputedCurrency, CurrencyInput, TextInput } from './inputs';
 
 interface Props {
   invoiceNumber: number;
@@ -74,9 +74,23 @@ export default function CreateInvoiceModal({ invoiceNumber, savedClients, onClos
   const [qrMissing, setQrMissing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
+  const [calcTotalRevenue, setCalcTotalRevenue] = useState(0);
+  const [calcProcessingFees, setCalcProcessingFees] = useState(0);
+  const [calcRefunds, setCalcRefunds] = useState(0);
+  const [calcPercent, setCalcPercent] = useState(0);
+
   const printRef = useRef<HTMLDivElement>(null);
 
   const total = useMemo(() => items.reduce((sum, i) => sum + i.qty * i.rate, 0), [items]);
+
+  const grossCollectedRevenue = calcTotalRevenue - calcProcessingFees - calcRefunds;
+  const grossCollectedRevenueShare = grossCollectedRevenue * (calcPercent / 100);
+
+  const addCalculatedLineItem = () =>
+    setItems((prev) => [
+      ...prev,
+      { id: uid(), description: `${calcPercent}% of gross collected revenue`, qty: 1, rate: grossCollectedRevenueShare },
+    ]);
 
   const updateItem = (id: string, patch: Partial<InvoiceLineItem>) =>
     setItems((prev) => prev.map((it) => (it.id === id ? { ...it, ...patch } : it)));
@@ -313,6 +327,58 @@ export default function CreateInvoiceModal({ invoiceNumber, savedClients, onClos
                 <RemovableField visible={showToEmail} onRemove={() => setShowToEmail(false)} onAdd={() => setShowToEmail(true)} addLabel="+ Add email">
                   <TextInput value={toEmail} onChange={setToEmail} className="block w-full text-sm text-indigo-600" />
                 </RemovableField>
+              </div>
+            </div>
+          </div>
+
+          <div className="mb-8" data-html2canvas-ignore="true">
+            <div className="text-xs font-medium text-gray-500 mb-2">Gross Collected Revenue Calculator</div>
+            <div className="border border-gray-200 rounded-lg bg-gray-50/60 p-4 space-y-2">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-gray-700">Total Revenue</span>
+                <div className="w-32">
+                  <CurrencyInput value={calcTotalRevenue} onChange={setCalcTotalRevenue} />
+                </div>
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-gray-700">Less: Processing Fees</span>
+                <div className="w-32">
+                  <CurrencyInput value={calcProcessingFees} onChange={setCalcProcessingFees} />
+                </div>
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-gray-700">Less: Refunds</span>
+                <div className="w-32">
+                  <CurrencyInput value={calcRefunds} onChange={setCalcRefunds} />
+                </div>
+              </div>
+              <div className="flex items-center justify-between text-sm pt-2 border-t border-gray-200">
+                <span className="font-semibold text-gray-900">Gross Collected Revenue</span>
+                <div className="w-32">
+                  <ComputedCurrency value={formatCurrency(grossCollectedRevenue)} bold />
+                </div>
+              </div>
+              <div className="flex items-center justify-between text-sm pt-2 border-t border-gray-200">
+                <span className="text-gray-700 flex items-center gap-1">
+                  Percentage of Gross
+                  <input
+                    type="number"
+                    step="0.1"
+                    value={calcPercent}
+                    onChange={(e) => setCalcPercent(e.target.value === '' ? 0 : parseFloat(e.target.value))}
+                    onFocus={(e) => e.target.select()}
+                    className="w-14 bg-transparent border-b border-gray-300 outline-none focus:bg-indigo-50 rounded px-1 text-gray-600 text-center"
+                  />
+                  %
+                </span>
+                <div className="w-32">
+                  <ComputedCurrency value={formatCurrency(grossCollectedRevenueShare)} bold />
+                </div>
+              </div>
+              <div className="flex justify-end pt-1">
+                <button onClick={addCalculatedLineItem} className="text-xs text-indigo-600 hover:text-indigo-700 font-medium">
+                  + Add as line item
+                </button>
               </div>
             </div>
           </div>
