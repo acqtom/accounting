@@ -74,6 +74,7 @@ export default function CreateInvoiceModal({ invoiceNumber, savedClients, onClos
   const [qrMissing, setQrMissing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
+  const [grossCalculatorEnabled, setGrossCalculatorEnabled] = useState(true);
   const [calcMonth, setCalcMonth] = useState(monthLabel(currentMonthKey()));
   const [calcTotalRevenue, setCalcTotalRevenue] = useState(0);
   const [calcProcessingFees, setCalcProcessingFees] = useState(0);
@@ -83,8 +84,12 @@ export default function CreateInvoiceModal({ invoiceNumber, savedClients, onClos
   const printRef = useRef<HTMLDivElement>(null);
 
   const grossCollectedRevenue = calcTotalRevenue - calcProcessingFees - calcRefunds;
-  const grossRevenueShareAmount = grossCollectedRevenue * (calcPercent / 100);
-  const grossRevenueShareLabel = `${calcMonth} — ${calcPercent}% of gross collected revenue`;
+  const grossRevenueShareAmount = grossCalculatorEnabled
+    ? grossCollectedRevenue * (calcPercent / 100)
+    : calcTotalRevenue;
+  const grossRevenueShareLabel = grossCalculatorEnabled
+    ? `${calcMonth} — ${calcPercent}% of gross collected revenue`
+    : `${calcMonth} — Total Revenue`;
 
   const itemsTotal = useMemo(() => items.reduce((sum, i) => sum + i.qty * i.rate, 0), [items]);
   const total = invoiceTotal({ items, grossRevenueShareAmount });
@@ -278,12 +283,32 @@ export default function CreateInvoiceModal({ invoiceNumber, savedClients, onClos
               </span>
             ))}
           </div>
-          <button
-            onClick={handleSaveDetails}
-            className="text-xs font-medium text-gray-500 hover:text-gray-800 border border-gray-200 hover:border-gray-300 rounded-lg px-3 py-1.5 transition-colors shrink-0"
-          >
-            Save details
-          </button>
+          <div className="flex items-center gap-4 flex-wrap shrink-0">
+            <label className="flex items-center gap-2 text-xs font-medium text-gray-500 cursor-pointer select-none">
+              Gross Collected Revenue Calculator
+              <button
+                type="button"
+                role="switch"
+                aria-checked={grossCalculatorEnabled}
+                onClick={() => setGrossCalculatorEnabled((v) => !v)}
+                className={`relative inline-flex h-4 w-8 shrink-0 items-center rounded-full p-0.5 transition-colors ${
+                  grossCalculatorEnabled ? 'bg-indigo-600' : 'bg-gray-300'
+                }`}
+              >
+                <span
+                  className={`h-3 w-3 rounded-full bg-white shadow-sm transition-transform ${
+                    grossCalculatorEnabled ? 'translate-x-4' : 'translate-x-0'
+                  }`}
+                />
+              </button>
+            </label>
+            <button
+              onClick={handleSaveDetails}
+              className="text-xs font-medium text-gray-500 hover:text-gray-800 border border-gray-200 hover:border-gray-300 rounded-lg px-3 py-1.5 transition-colors"
+            >
+              Save details
+            </button>
+          </div>
         </div>
 
         <div ref={printRef} className="bg-white">
@@ -349,7 +374,9 @@ export default function CreateInvoiceModal({ invoiceNumber, savedClients, onClos
           </div>
 
           <div className="mb-8">
-            <div className="text-xs font-medium text-gray-500 mb-2">Gross Collected Revenue Calculator</div>
+            <div className="text-xs font-medium text-gray-500 mb-2">
+              {grossCalculatorEnabled ? 'Gross Collected Revenue Calculator' : 'Total Revenue'}
+            </div>
             <div className="border border-gray-200 rounded-lg bg-gray-50/60 p-4 space-y-2">
               <div className="flex items-center justify-between text-sm pb-2 border-b border-gray-200">
                 <span className="text-gray-700">Month</span>
@@ -361,41 +388,45 @@ export default function CreateInvoiceModal({ invoiceNumber, savedClients, onClos
                   <CurrencyInput value={calcTotalRevenue} onChange={setCalcTotalRevenue} />
                 </div>
               </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-700">Less: Processing Fees</span>
-                <div className="w-32">
-                  <CurrencyInput value={calcProcessingFees} onChange={setCalcProcessingFees} />
-                </div>
-              </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-700">Less: Refunds</span>
-                <div className="w-32">
-                  <CurrencyInput value={calcRefunds} onChange={setCalcRefunds} />
-                </div>
-              </div>
-              <div className="flex items-center justify-between text-sm pt-2 border-t border-gray-200">
-                <span className="font-semibold text-gray-900">Gross Collected Revenue</span>
-                <div className="w-32">
-                  <ComputedCurrency value={formatCurrency(grossCollectedRevenue)} bold />
-                </div>
-              </div>
-              <div className="flex items-center justify-between text-sm pt-2 border-t border-gray-200">
-                <span className="text-gray-700 flex items-center gap-1">
-                  Percentage of Gross
-                  <input
-                    type="number"
-                    step="0.1"
-                    value={calcPercent}
-                    onChange={(e) => setCalcPercent(e.target.value === '' ? 0 : parseFloat(e.target.value))}
-                    onFocus={(e) => e.target.select()}
-                    className="w-14 bg-transparent border-b border-gray-300 outline-none focus:bg-indigo-50 rounded px-1 text-gray-600 text-center"
-                  />
-                  %
-                </span>
-                <div className="w-32">
-                  <ComputedCurrency value={formatCurrency(grossRevenueShareAmount)} bold />
-                </div>
-              </div>
+              {grossCalculatorEnabled && (
+                <>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-700">Less: Processing Fees</span>
+                    <div className="w-32">
+                      <CurrencyInput value={calcProcessingFees} onChange={setCalcProcessingFees} />
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-700">Less: Refunds</span>
+                    <div className="w-32">
+                      <CurrencyInput value={calcRefunds} onChange={setCalcRefunds} />
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between text-sm pt-2 border-t border-gray-200">
+                    <span className="font-semibold text-gray-900">Gross Collected Revenue</span>
+                    <div className="w-32">
+                      <ComputedCurrency value={formatCurrency(grossCollectedRevenue)} bold />
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between text-sm pt-2 border-t border-gray-200">
+                    <span className="text-gray-700 flex items-center gap-1">
+                      Percentage of Gross
+                      <input
+                        type="number"
+                        step="0.1"
+                        value={calcPercent}
+                        onChange={(e) => setCalcPercent(e.target.value === '' ? 0 : parseFloat(e.target.value))}
+                        onFocus={(e) => e.target.select()}
+                        className="w-14 bg-transparent border-b border-gray-300 outline-none focus:bg-indigo-50 rounded px-1 text-gray-600 text-center"
+                      />
+                      %
+                    </span>
+                    <div className="w-32">
+                      <ComputedCurrency value={formatCurrency(grossRevenueShareAmount)} bold />
+                    </div>
+                  </div>
+                </>
+              )}
               <p className="text-xs text-gray-400 pt-1" data-html2canvas-ignore="true">
                 Automatically added to the invoice total below as “{grossRevenueShareLabel}”.
               </p>
