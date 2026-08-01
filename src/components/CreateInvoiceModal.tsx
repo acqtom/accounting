@@ -138,6 +138,14 @@ export default function CreateInvoiceModal({ invoiceNumber, savedClients, onClos
         // rather than off-screen.
         const width = node.scrollWidth;
         const height = node.scrollHeight;
+        // A few px of slack on the capture canvas (not the wrapper's layout
+        // width, which must stay equal to `width` so text wraps identically
+        // to the live modal) — foreignObjectRendering measures text via the
+        // browser's real layout, but occasionally renders a hair wider than
+        // the live DOM, and without this the far edge (e.g. the invoice
+        // total) gets clipped instead of just leaving blank margin.
+        const captureWidth = width + 16;
+        const captureHeight = height + 16;
         const clone = node.cloneNode(true) as HTMLElement;
         const origFields = node.querySelectorAll('input, textarea');
         const cloneFields = clone.querySelectorAll('input, textarea');
@@ -181,8 +189,8 @@ export default function CreateInvoiceModal({ invoiceNumber, savedClients, onClos
         const canvas = await html2canvas(clone, {
           scale: 2,
           backgroundColor: '#ffffff',
-          width,
-          height,
+          width: captureWidth,
+          height: captureHeight,
           windowWidth: width,
           windowHeight: height,
           foreignObjectRendering: true,
@@ -196,20 +204,30 @@ export default function CreateInvoiceModal({ invoiceNumber, savedClients, onClos
         // silently double our own scale multiplication below and place the
         // image off-canvas.
         ctx?.setTransform(1, 0, 0, 1, 0, 0);
-        const scale = canvas.width / width;
+        // Divide by captureWidth (not width) since that's what canvas.width
+        // was actually derived from — dividing by the un-padded width would
+        // overstate the scale by the buffer fraction and misplace the QR image.
+        const scale = canvas.width / captureWidth;
         for (const placement of imagePlacements) {
           if (!placement.ready) continue;
           ctx?.drawImage(placement.img, placement.x * scale, placement.y * scale, placement.w * scale, placement.h * scale);
         }
 
         const imgData = canvas.toDataURL('image/png');
+        // Leave a plain white margin around the invoice so it isn't cropped
+        // edge-to-edge (which reads as "zoomed in" when opened/printed).
+        const margin = 24 * scale;
+        const pdfWidth = canvas.width + margin * 2;
+        const pdfHeight = canvas.height + margin * 2;
         // jsPDF defaults to portrait and silently swaps a landscape [w, h]
         // format array to enforce it, which desyncs the page from the image
         // placed with the original (unswapped) dimensions. Setting the
-        // orientation explicitly to match the canvas prevents that swap.
-        const orientation = canvas.width > canvas.height ? 'l' : 'p';
-        const pdf = new jsPDF({ orientation, unit: 'px', format: [canvas.width, canvas.height] });
-        pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+        // orientation explicitly to match the page prevents that swap.
+        const orientation = pdfWidth > pdfHeight ? 'l' : 'p';
+        const pdf = new jsPDF({ orientation, unit: 'px', format: [pdfWidth, pdfHeight] });
+        pdf.setFillColor('#ffffff');
+        pdf.rect(0, 0, pdfWidth, pdfHeight, 'F');
+        pdf.addImage(imgData, 'PNG', margin, margin, canvas.width, canvas.height);
         pdf.save(`invoice-${number}.pdf`);
       }
       onSave({
@@ -437,21 +455,21 @@ export default function CreateInvoiceModal({ invoiceNumber, savedClients, onClos
                 />
               )}
             </div>
-            <div className="text-right">
+            <div>
               {grossRevenueShareAmount !== 0 && (
-                <div className="space-y-1 mb-3 text-sm">
-                  <div className="flex items-center justify-between gap-8">
-                    <span className="text-gray-500">Software costs</span>
-                    <span className="text-gray-700">{formatCurrency(itemsTotal)}</span>
+                <div className="mb-3 text-sm">
+                  <div className="grid grid-cols-[1fr_90px] gap-2 py-0.5">
+                    <span className="text-gray-500 text-left">Software costs</span>
+                    <span className="text-gray-700 text-right">{formatCurrency(itemsTotal)}</span>
                   </div>
-                  <div className="flex items-center justify-between gap-8">
-                    <span className="text-gray-500">{grossRevenueShareLabel}</span>
-                    <span className="text-gray-700">{formatCurrency(grossRevenueShareAmount)}</span>
+                  <div className="grid grid-cols-[1fr_90px] gap-2 py-0.5">
+                    <span className="text-gray-500 text-left">{grossRevenueShareLabel}</span>
+                    <span className="text-gray-700 text-right">{formatCurrency(grossRevenueShareAmount)}</span>
                   </div>
                 </div>
               )}
-              <div className="text-xs font-medium text-gray-500 mb-1">Total</div>
-              <div className="text-3xl font-bold text-gray-900">{formatCurrency(total)}</div>
+              <div className="text-xs font-medium text-gray-500 mb-1 text-right">Total</div>
+              <div className="text-3xl font-bold text-gray-900 text-right">{formatCurrency(total)}</div>
             </div>
           </div>
         </div>
