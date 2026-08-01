@@ -108,12 +108,11 @@ export function calcCapitalAllocation(netIncomeNzd: number): CapitalAllocation {
   return { total, software, rent, food, businessBank, checking };
 }
 
-// Older saved invoices predate softwareCosts/grossRevenueShareAmount, so both
-// are optional on read — treat missing as zero rather than poisoning the sum with NaN.
-export function invoiceTotal(invoice: Pick<Invoice, 'items' | 'softwareCosts' | 'grossRevenueShareAmount'>): number {
+// Older saved invoices predate grossRevenueShareAmount, so it's optional on
+// read — treat missing as zero rather than poisoning the sum with NaN.
+export function invoiceTotal(invoice: Pick<Invoice, 'items' | 'grossRevenueShareAmount'>): number {
   const itemsTotal = invoice.items.reduce((sum, i) => sum + i.qty * i.rate, 0);
-  const softwareCostsTotal = (invoice.softwareCosts ?? []).reduce((sum, s) => sum + s.amount, 0);
-  return itemsTotal + softwareCostsTotal + (invoice.grossRevenueShareAmount ?? 0);
+  return itemsTotal + (invoice.grossRevenueShareAmount ?? 0);
 }
 
 export function formatCurrency(value: number, opts: { sign?: boolean } = {}): string {
