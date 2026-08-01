@@ -2,7 +2,7 @@ import { useMemo, useRef, useState } from 'react';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas-pro';
 import type { Invoice, InvoiceLineItem, SavedClient } from '../lib/types';
-import { formatCurrency } from '../lib/calculations';
+import { currentMonthKey, formatCurrency, monthLabel } from '../lib/calculations';
 import { uid } from '../lib/storage';
 import { ComputedCurrency, CurrencyInput, TextInput } from './inputs';
 
@@ -74,6 +74,7 @@ export default function CreateInvoiceModal({ invoiceNumber, savedClients, onClos
   const [qrMissing, setQrMissing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
+  const [calcMonth, setCalcMonth] = useState(currentMonthKey());
   const [calcTotalRevenue, setCalcTotalRevenue] = useState(0);
   const [calcProcessingFees, setCalcProcessingFees] = useState(0);
   const [calcRefunds, setCalcRefunds] = useState(0);
@@ -89,7 +90,12 @@ export default function CreateInvoiceModal({ invoiceNumber, savedClients, onClos
   const addCalculatedLineItem = () =>
     setItems((prev) => [
       ...prev,
-      { id: uid(), description: `${calcPercent}% of gross collected revenue`, qty: 1, rate: grossCollectedRevenueShare },
+      {
+        id: uid(),
+        description: `${monthLabel(calcMonth)} — ${calcPercent}% of gross collected revenue`,
+        qty: 1,
+        rate: grossCollectedRevenueShare,
+      },
     ]);
 
   const updateItem = (id: string, patch: Partial<InvoiceLineItem>) =>
@@ -334,6 +340,15 @@ export default function CreateInvoiceModal({ invoiceNumber, savedClients, onClos
           <div className="mb-8" data-html2canvas-ignore="true">
             <div className="text-xs font-medium text-gray-500 mb-2">Gross Collected Revenue Calculator</div>
             <div className="border border-gray-200 rounded-lg bg-gray-50/60 p-4 space-y-2">
+              <div className="flex items-center justify-between text-sm pb-2 border-b border-gray-200">
+                <span className="text-gray-700">Month</span>
+                <input
+                  type="month"
+                  value={calcMonth}
+                  onChange={(e) => setCalcMonth(e.target.value)}
+                  className="w-32 bg-transparent outline-none focus:bg-indigo-50 rounded px-1 py-0.5 text-sm text-gray-900 text-right"
+                />
+              </div>
               <div className="flex items-center justify-between text-sm">
                 <span className="text-gray-700">Total Revenue</span>
                 <div className="w-32">
