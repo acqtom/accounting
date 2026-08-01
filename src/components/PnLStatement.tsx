@@ -46,6 +46,21 @@ export default function PnLStatement({ month, onChange }: Props) {
       clients: m.clients.map((c) => (c.id === id ? { ...c, ...patch } : c)),
     }));
 
+  const addOtherRevenue = () =>
+    onChange((m) => ({
+      ...m,
+      otherRevenue: [...m.otherRevenue, { id: uid(), name: 'New revenue', amount: 0 }],
+    }));
+
+  const removeOtherRevenue = (id: string) =>
+    onChange((m) => ({ ...m, otherRevenue: m.otherRevenue.filter((r) => r.id !== id) }));
+
+  const updateOtherRevenue = (id: string, patch: Partial<MonthData['otherRevenue'][number]>) =>
+    onChange((m) => ({
+      ...m,
+      otherRevenue: m.otherRevenue.map((r) => (r.id === id ? { ...r, ...patch } : r)),
+    }));
+
   const addSoftware = () =>
     onChange((m) => ({
       ...m,
@@ -111,6 +126,43 @@ export default function PnLStatement({ month, onChange }: Props) {
             <td className="py-2 w-40" />
             <td className="py-2 w-40">
               <ComputedCurrency value={formatCurrency(t.totalPortfolioRevenue)} bold />
+            </td>
+          </tr>
+
+          <SpacerRow />
+          <SectionHeader>Other Revenue</SectionHeader>
+          {month.otherRevenue.map((r) => (
+            <tr key={r.id} className="group border-b border-gray-100">
+              <td className="py-2 pr-2 text-sm text-gray-800">
+                <div className="flex items-center gap-2">
+                  <TextInput value={r.name} onChange={(v) => updateOtherRevenue(r.id, { name: v })} className="w-full" />
+                  <button
+                    onClick={() => removeOtherRevenue(r.id)}
+                    className="opacity-0 group-hover:opacity-100 text-gray-300 hover:text-red-500 transition-opacity text-xs"
+                    aria-label="Remove other revenue"
+                  >
+                    ✕
+                  </button>
+                </div>
+              </td>
+              <td className="py-2 w-40">
+                <CurrencyInput value={r.amount} onChange={(v) => updateOtherRevenue(r.id, { amount: v })} />
+              </td>
+              <td className="py-2 w-40" />
+            </tr>
+          ))}
+          <tr>
+            <td colSpan={3} className="pt-1 pb-2">
+              <button onClick={addOtherRevenue} className="text-xs text-indigo-600 hover:text-indigo-700 font-medium">
+                + Add other revenue
+              </button>
+            </td>
+          </tr>
+          <tr className="border-t border-gray-200">
+            <td className="py-2 font-semibold text-sm text-gray-900">Total Other Revenue</td>
+            <td className="py-2 w-40" />
+            <td className="py-2 w-40">
+              <ComputedCurrency value={formatCurrency(t.totalOtherRevenue)} bold />
             </td>
           </tr>
 

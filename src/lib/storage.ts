@@ -27,6 +27,7 @@ export function createDefaultMonth(key: string, previousMonth?: MonthData | null
       { id: 'default-alex', name: 'Alex', revenue: 0, revenueShare: 0 },
       { id: 'default-adriel-hsu', name: 'Adriel Hsu', revenue: 0, revenueShare: 0 },
     ],
+    otherRevenue: [],
     expenses: {
       setterPayrollPercent: 5,
       closerPayrollPercent: 10,
@@ -61,6 +62,9 @@ function normalizeMonth(key: string, raw: Partial<MonthData> | undefined): Month
             revenueShare: c.revenueShare ?? 0,
           }))
         : base.clients,
+    otherRevenue: Array.isArray(raw.otherRevenue)
+      ? raw.otherRevenue.map((r) => ({ id: r.id ?? uid(), name: r.name ?? '', amount: r.amount ?? 0 }))
+      : [],
     expenses: {
       setterPayrollPercent: rawExpenses?.setterPayrollPercent ?? base.expenses.setterPayrollPercent,
       closerPayrollPercent: rawExpenses?.closerPayrollPercent ?? base.expenses.closerPayrollPercent,

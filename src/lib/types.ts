@@ -14,6 +14,7 @@ export interface ClientRevenue {
 export interface MonthData {
   key: string; // "2026-07"
   clients: ClientRevenue[];
+  otherRevenue: LineItem[];
   expenses: {
     setterPayrollPercent: number;
     closerPayrollPercent: number;

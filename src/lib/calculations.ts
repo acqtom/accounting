@@ -19,6 +19,7 @@ function findAdrielClient(clients: ClientRevenue[]): ClientRevenue | undefined {
 
 export function calcTotals(month: MonthData) {
   const totalPortfolioRevenue = month.clients.reduce((sum, c) => sum + (c.revenue || 0), 0);
+  const totalOtherRevenue = month.otherRevenue.reduce((sum, r) => sum + (r.amount || 0), 0);
 
   const alexClient = findAlexClient(month.clients);
   const adrielClient = findAdrielClient(month.clients);
@@ -42,7 +43,7 @@ export function calcTotals(month: MonthData) {
     return sum + share;
   }, 0);
 
-  const grossPortfolioRevenue = totalPortfolioRevenue - totalClientRevenueShare;
+  const grossPortfolioRevenue = totalPortfolioRevenue + totalOtherRevenue - totalClientRevenueShare;
 
   const setterPayroll = grossPortfolioRevenue * (month.expenses.setterPayrollPercent / 100);
   const closerPayroll = grossPortfolioRevenue * (month.expenses.closerPayrollPercent / 100);
@@ -60,6 +61,7 @@ export function calcTotals(month: MonthData) {
 
   return {
     totalPortfolioRevenue,
+    totalOtherRevenue,
     clientShares,
     clientShareRates,
     totalClientRevenueShare,
