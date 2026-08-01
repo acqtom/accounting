@@ -348,7 +348,7 @@ export default function CreateInvoiceModal({ invoiceNumber, savedClients, onClos
             </div>
           </div>
 
-          <div className="mb-8" data-html2canvas-ignore="true">
+          <div className="mb-8">
             <div className="text-xs font-medium text-gray-500 mb-2">Gross Collected Revenue Calculator</div>
             <div className="border border-gray-200 rounded-lg bg-gray-50/60 p-4 space-y-2">
               <div className="flex items-center justify-between text-sm pb-2 border-b border-gray-200">
@@ -396,7 +396,7 @@ export default function CreateInvoiceModal({ invoiceNumber, savedClients, onClos
                   <ComputedCurrency value={formatCurrency(grossRevenueShareAmount)} bold />
                 </div>
               </div>
-              <p className="text-xs text-gray-400 pt-1">
+              <p className="text-xs text-gray-400 pt-1" data-html2canvas-ignore="true">
                 Automatically added to the invoice total below as “{grossRevenueShareLabel}”.
               </p>
             </div>
