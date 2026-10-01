@@ -77,13 +77,20 @@ export default function CreateInvoiceModal({ invoiceNumber, savedClients, onClos
   const [grossCalculatorEnabled, setGrossCalculatorEnabled] = useState(true);
   const [calcMonth, setCalcMonth] = useState(monthLabel(currentMonthKey()));
   const [calcTotalRevenue, setCalcTotalRevenue] = useState(0);
-  const [calcProcessingFees, setCalcProcessingFees] = useState(0);
-  const [calcRefunds, setCalcRefunds] = useState(0);
+  const [calcDeductions, setCalcDeductions] = useState<{ id: string; label: string; amount: number }[]>([
+    { id: uid(), label: 'Processing Fees', amount: 0 },
+    { id: uid(), label: 'Refunds', amount: 0 },
+  ]);
   const [calcPercent, setCalcPercent] = useState(0);
 
   const printRef = useRef<HTMLDivElement>(null);
 
-  const grossCollectedRevenue = calcTotalRevenue - calcProcessingFees - calcRefunds;
+  const updateDeduction = (id: string, patch: Partial<{ label: string; amount: number }>) =>
+    setCalcDeductions((prev) => prev.map((d) => (d.id === id ? { ...d, ...patch } : d)));
+  const addDeduction = () => setCalcDeductions((prev) => [...prev, { id: uid(), label: '', amount: 0 }]);
+  const removeDeduction = (id: string) => setCalcDeductions((prev) => prev.filter((d) => d.id !== id));
+
+  const grossCollectedRevenue = calcTotalRevenue - calcDeductions.reduce((sum, d) => sum + d.amount, 0);
   const grossRevenueShareAmount = grossCalculatorEnabled
     ? grossCollectedRevenue * (calcPercent / 100)
     : calcTotalRevenue;
@@ -390,18 +397,36 @@ export default function CreateInvoiceModal({ invoiceNumber, savedClients, onClos
               </div>
               {grossCalculatorEnabled && (
                 <>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-700">Less: Processing Fees</span>
-                    <div className="w-32">
-                      <CurrencyInput value={calcProcessingFees} onChange={setCalcProcessingFees} />
+                  {calcDeductions.map((d) => (
+                    <div key={d.id} className="group relative flex items-center justify-between text-sm gap-4">
+                      <span className="text-gray-700 flex items-center gap-1 flex-1 min-w-0">
+                        Less:
+                        <TextInput
+                          value={d.label}
+                          onChange={(v) => updateDeduction(d.id, { label: v })}
+                          className="flex-1 min-w-0 text-sm text-gray-700"
+                        />
+                      </span>
+                      <div className="w-32">
+                        <CurrencyInput value={d.amount} onChange={(v) => updateDeduction(d.id, { amount: v })} />
+                      </div>
+                      <button
+                        onClick={() => removeDeduction(d.id)}
+                        data-html2canvas-ignore="true"
+                        className="absolute -right-4 w-4 text-center opacity-0 group-hover:opacity-100 text-gray-300 hover:text-red-500 transition-opacity text-xs"
+                        aria-label="Remove deduction"
+                      >
+                        ✕
+                      </button>
                     </div>
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-700">Less: Refunds</span>
-                    <div className="w-32">
-                      <CurrencyInput value={calcRefunds} onChange={setCalcRefunds} />
-                    </div>
-                  </div>
+                  ))}
+                  <button
+                    onClick={addDeduction}
+                    data-html2canvas-ignore="true"
+                    className="text-xs text-indigo-600 hover:text-indigo-700 font-medium"
+                  >
+                    + Add deduction
+                  </button>
                   <div className="flex items-center justify-between text-sm pt-2 border-t border-gray-200">
                     <span className="font-semibold text-gray-900">Gross Collected Revenue</span>
                     <div className="w-32">
