@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import type { AppData, MonthData } from './types';
+import type { AppData, Client, ClientType, LineItem, MonthData, OwnOffer, TeamCost } from './types';
+import { DEFAULT_GO_REV_SHARE_PERCENT } from './calculations';
 
 const STORAGE_KEY = 'accounting-hub-data-v1';
 
@@ -18,26 +19,115 @@ function findPreviousMonthWithData(months: Record<string, MonthData>, key: strin
 }
 
 export function createDefaultMonth(key: string, previousMonth?: MonthData | null): MonthData {
+  // fixed (not random) ids: this factory runs independently in both
+  // getMonth and updateMonth's fallback for a month that isn't saved yet,
+  // so random ids would desync between the two and silently drop edits.
+  // Carried-forward items keep their ids for the same reason.
+  if (previousMonth) {
+    return {
+      key,
+      // client setup (names, rev share %, software) recurs; this month's
+      // revenue figures start fresh
+      clients: previousMonth.clients.map((c) => ({
+        ...c,
+        revenue: 0,
+        fees: 0,
+        adSpend: 0,
+        software: c.software.map((s) => ({ ...s })),
+      })),
+      ownOffer: { ...EMPTY_OWN_OFFER },
+      teamCosts: previousMonth.teamCosts.map((tc) => ({ ...tc })),
+      software: previousMonth.software.map((s) => ({ ...s })),
+      fxRateUsdToNzd: previousMonth.fxRateUsdToNzd,
+    };
+  }
   return {
     key,
-    // fixed (not random) ids: this factory runs independently in both
-    // getMonth and updateMonth's fallback for a month that isn't saved yet,
-    // so random ids would desync between the two and silently drop edits
     clients: [
-      { id: 'default-alex', name: 'Alex', revenue: 0, revenueShare: 0 },
-      { id: 'default-adriel-hsu', name: 'Adriel Hsu', revenue: 0, revenueShare: 0 },
+      newClient('go', 'Adriel Hsu', 'default-adriel-hsu'),
+      newClient('publishing', 'Alex', 'default-alex'),
     ],
-    otherRevenue: [],
-    expenses: {
-      setterPayrollPercent: 5,
-      closerPayrollPercent: 10,
-      cmoEquityAlexPercent: 10,
-      cmoEquityAdrielPercent: 3,
-      // carry recurring software expenses forward from the previous month
-      // (same ids preserved, not regenerated, for the reason noted above)
-      software: previousMonth ? previousMonth.expenses.software.map((s) => ({ ...s })) : [],
-    },
+    ownOffer: { ...EMPTY_OWN_OFFER },
+    teamCosts: [
+      { id: 'default-setter', name: 'Setter Payroll', mode: 'percent', amount: 0, percent: 5 },
+      { id: 'default-closer', name: 'Closer Payroll', mode: 'percent', amount: 0, percent: 10 },
+      { id: 'default-cmo-base', name: 'CMO Base Pay', mode: 'amount', amount: 3000, percent: 0 },
+    ],
+    software: [],
     fxRateUsdToNzd: 1.7,
+  };
+}
+
+const EMPTY_OWN_OFFER: OwnOffer = { cashCollected: 0, fees: 0, refunds: 0, adSpend: 0 };
+
+export function newClient(type: ClientType, name: string, id = uid()): Client {
+  return { id, type, name, revenue: 0, fees: 0, adSpend: 0, revSharePercent: DEFAULT_GO_REV_SHARE_PERCENT, software: [] };
+}
+
+const normalizeItems = (items: unknown): LineItem[] =>
+  Array.isArray(items)
+    ? items.map((i: Partial<LineItem>) => ({ id: i.id ?? uid(), name: i.name ?? '', amount: i.amount ?? 0 }))
+    : [];
+
+// Pre-restructure months stored clients as { revenue, revenueShare } with a
+// flat expenses block. Alex's fixed 50% client share maps to a publishing
+// split and Adriel's 65% to a GO client keeping 35%; old payroll/equity/bonus
+// expenses become team costs so historical net income is preserved.
+interface LegacyClient {
+  id?: string;
+  name?: string;
+  revenue?: number;
+  revenueShare?: number;
+}
+interface LegacyExpenses {
+  setterPayrollPercent?: number;
+  closerPayrollPercent?: number;
+  cmoEquityAlexPercent?: number;
+  cmoEquityAdrielPercent?: number;
+  software?: LineItem[];
+}
+
+function migrateLegacyMonth(key: string, raw: Record<string, unknown>): MonthData {
+  const legacyClients = (Array.isArray(raw.clients) ? raw.clients : []) as LegacyClient[];
+  const expenses = (raw.expenses ?? {}) as LegacyExpenses;
+  const isAlex = (c: LegacyClient) => c.id === 'default-alex' || c.name?.trim().toLowerCase() === 'alex';
+  const isAdriel = (c: LegacyClient) =>
+    c.id === 'default-adriel-hsu' || !!c.name?.trim().toLowerCase().includes('adriel');
+
+  const clients: Client[] = legacyClients.map((c) => {
+    const revenue = c.revenue ?? 0;
+    const base = newClient(isAlex(c) ? 'publishing' : 'go', c.name ?? '', c.id ?? uid());
+    let revSharePercent = DEFAULT_GO_REV_SHARE_PERCENT;
+    if (!isAlex(c) && !isAdriel(c) && revenue > 0) revSharePercent = (1 - (c.revenueShare ?? 0) / revenue) * 100;
+    return { ...base, revenue, revSharePercent };
+  });
+
+  const alexRevenue = legacyClients.find(isAlex)?.revenue ?? 0;
+  const adrielRevenue = legacyClients.find(isAdriel)?.revenue ?? 0;
+  const portfolio = legacyClients.reduce((sum, c) => sum + (c.revenue ?? 0), 0);
+  const otherRevenue = normalizeItems(raw.otherRevenue).reduce((sum, r) => sum + r.amount, 0);
+
+  const teamCosts: TeamCost[] = [
+    { id: uid(), name: 'Setter Payroll', mode: 'percent', amount: 0, percent: expenses.setterPayrollPercent ?? 5 },
+    { id: uid(), name: 'Closer Payroll', mode: 'percent', amount: 0, percent: expenses.closerPayrollPercent ?? 10 },
+    { id: uid(), name: 'CMO Base Pay', mode: 'amount', amount: 3000, percent: 0 },
+  ];
+  const fixed: [string, number][] = [
+    ['CMO Equity (Alex)', alexRevenue * ((expenses.cmoEquityAlexPercent ?? 10) / 100)],
+    ['CMO Equity (Adriel)', adrielRevenue * ((expenses.cmoEquityAdrielPercent ?? 3) / 100)],
+    ['Bonuses', Math.floor(Math.max(0, portfolio) / 40000) * 1000],
+  ];
+  for (const [name, amount] of fixed) {
+    if (amount > 0) teamCosts.push({ id: uid(), name, mode: 'amount', amount, percent: 0 });
+  }
+
+  return {
+    key,
+    clients: clients.length > 0 ? clients : createDefaultMonth(key).clients,
+    ownOffer: { ...EMPTY_OWN_OFFER, cashCollected: otherRevenue },
+    teamCosts,
+    software: normalizeItems(expenses.software),
+    fxRateUsdToNzd: (raw.fxRateUsdToNzd as number | undefined) ?? 1.7,
   };
 }
 
@@ -47,34 +137,40 @@ export function createDefaultMonth(key: string, previousMonth?: MonthData | null
 // produces NaN, which silently poisons every downstream calculation and
 // breaks the chart. Filling gaps with current defaults here, once, keeps
 // every other call site free to assume a complete, valid MonthData.
-function normalizeMonth(key: string, raw: Partial<MonthData> | undefined): MonthData {
+function normalizeMonth(key: string, raw: Record<string, unknown> | undefined): MonthData {
   const base = createDefaultMonth(key);
   if (!raw) return base;
-  const rawExpenses = raw.expenses as Partial<MonthData['expenses']> | undefined;
+  if (!raw.ownOffer) return migrateLegacyMonth(key, raw);
+  const ownOffer = raw.ownOffer as Partial<OwnOffer>;
   return {
     key,
-    clients:
-      Array.isArray(raw.clients) && raw.clients.length > 0
-        ? raw.clients.map((c) => ({
-            id: c.id ?? uid(),
-            name: c.name ?? '',
-            revenue: c.revenue ?? 0,
-            revenueShare: c.revenueShare ?? 0,
-          }))
-        : base.clients,
-    otherRevenue: Array.isArray(raw.otherRevenue)
-      ? raw.otherRevenue.map((r) => ({ id: r.id ?? uid(), name: r.name ?? '', amount: r.amount ?? 0 }))
-      : [],
-    expenses: {
-      setterPayrollPercent: rawExpenses?.setterPayrollPercent ?? base.expenses.setterPayrollPercent,
-      closerPayrollPercent: rawExpenses?.closerPayrollPercent ?? base.expenses.closerPayrollPercent,
-      cmoEquityAlexPercent: rawExpenses?.cmoEquityAlexPercent ?? base.expenses.cmoEquityAlexPercent,
-      cmoEquityAdrielPercent: rawExpenses?.cmoEquityAdrielPercent ?? base.expenses.cmoEquityAdrielPercent,
-      software: Array.isArray(rawExpenses?.software)
-        ? rawExpenses.software.map((s) => ({ id: s.id ?? uid(), name: s.name ?? '', amount: s.amount ?? 0 }))
-        : [],
+    clients: Array.isArray(raw.clients)
+      ? (raw.clients as Partial<Client>[]).map((c) => ({
+          ...newClient(c.type === 'publishing' ? 'publishing' : 'go', c.name ?? '', c.id ?? uid()),
+          revenue: c.revenue ?? 0,
+          fees: c.fees ?? 0,
+          adSpend: c.adSpend ?? 0,
+          revSharePercent: c.revSharePercent ?? DEFAULT_GO_REV_SHARE_PERCENT,
+          software: normalizeItems(c.software),
+        }))
+      : base.clients,
+    ownOffer: {
+      cashCollected: ownOffer.cashCollected ?? 0,
+      fees: ownOffer.fees ?? 0,
+      refunds: ownOffer.refunds ?? 0,
+      adSpend: ownOffer.adSpend ?? 0,
     },
-    fxRateUsdToNzd: raw.fxRateUsdToNzd ?? base.fxRateUsdToNzd,
+    teamCosts: Array.isArray(raw.teamCosts)
+      ? (raw.teamCosts as Partial<TeamCost>[]).map((tc) => ({
+          id: tc.id ?? uid(),
+          name: tc.name ?? '',
+          mode: tc.mode === 'percent' ? 'percent' : 'amount',
+          amount: tc.amount ?? 0,
+          percent: tc.percent ?? 0,
+        }))
+      : base.teamCosts,
+    software: normalizeItems(raw.software),
+    fxRateUsdToNzd: (raw.fxRateUsdToNzd as number | undefined) ?? base.fxRateUsdToNzd,
   };
 }
 
@@ -84,7 +180,7 @@ function loadData(): AppData {
     if (raw) {
       const parsed = { months: {}, invoices: [], nextInvoiceNumber: 1, savedClients: [], ...JSON.parse(raw) };
       const months: Record<string, MonthData> = {};
-      for (const [key, month] of Object.entries(parsed.months as Record<string, Partial<MonthData>>)) {
+      for (const [key, month] of Object.entries(parsed.months as Record<string, Record<string, unknown>>)) {
         months[key] = normalizeMonth(key, month);
       }
       return { ...parsed, months };

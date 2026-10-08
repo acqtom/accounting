@@ -1,78 +1,64 @@
-import type { ClientRevenue, Invoice, MonthData } from './types';
+import type { Client, Invoice, LineItem, MonthData, TeamCost } from './types';
 
-const BONUS_TIER_REVENUE = 40000;
-const BONUS_PER_TIER = 1000;
-const CMO_BASE_PAY_USD = 3000;
-const ALEX_CLIENT_SHARE_RATE = 0.5;
-const ADRIEL_CLIENT_SHARE_RATE = 0.65;
+export const DEFAULT_GO_REV_SHARE_PERCENT = 35;
+export const PUBLISHING_SPLIT_RATE = 0.5;
 
-function findAlexClient(clients: ClientRevenue[]): ClientRevenue | undefined {
-  return clients.find((c) => c.id === 'default-alex') ?? clients.find((c) => c.name.trim().toLowerCase() === 'alex');
+const sumItems = (items: LineItem[]) => items.reduce((sum, i) => sum + (i.amount || 0), 0);
+
+export function calcClient(c: Client) {
+  const software = sumItems(c.software);
+  if (c.type === 'go') {
+    // GO: revenue less fees, we take the rev share % and bill software on top
+    const totalRevenue = (c.revenue || 0) - (c.fees || 0);
+    const revShare = totalRevenue * ((c.revSharePercent || 0) / 100);
+    return { totalRevenue, revShare, software, net: totalRevenue, earned: revShare + software };
+  }
+  // Publishing: revenue less ad spend and software, then always a 50/50 split
+  const net = (c.revenue || 0) - (c.adSpend || 0) - software;
+  return { totalRevenue: c.revenue || 0, revShare: net * PUBLISHING_SPLIT_RATE, software, net, earned: net * PUBLISHING_SPLIT_RATE };
 }
 
-function findAdrielClient(clients: ClientRevenue[]): ClientRevenue | undefined {
-  return (
-    clients.find((c) => c.id === 'default-adriel-hsu') ??
-    clients.find((c) => c.name.trim().toLowerCase().includes('adriel'))
-  );
+export function teamCostValue(tc: TeamCost, totalCashCollected: number): number {
+  return tc.mode === 'percent' ? totalCashCollected * ((tc.percent || 0) / 100) : tc.amount || 0;
 }
 
 export function calcTotals(month: MonthData) {
-  const totalPortfolioRevenue = month.clients.reduce((sum, c) => sum + (c.revenue || 0), 0);
-  const totalOtherRevenue = month.otherRevenue.reduce((sum, r) => sum + (r.amount || 0), 0);
+  const clientEarnings: Record<string, number> = {};
+  let clientsEarned = 0;
+  let clientsCashCollected = 0;
+  for (const c of month.clients) {
+    const earned = calcClient(c).earned;
+    clientEarnings[c.id] = earned;
+    clientsEarned += earned;
+    clientsCashCollected += c.revenue || 0;
+  }
 
-  const alexClient = findAlexClient(month.clients);
-  const adrielClient = findAdrielClient(month.clients);
+  const o = month.ownOffer;
+  const offerGrossRevenue = (o.cashCollected || 0) - (o.fees || 0) - (o.refunds || 0) - (o.adSpend || 0);
 
-  // Alex and Adriel's client revenue share is a fixed rate of their own
-  // revenue, not manually entered; other clients keep the manual field.
-  const clientShares: Record<string, number> = {};
-  const clientShareRates: Record<string, number> = {};
-  const totalClientRevenueShare = month.clients.reduce((sum, c) => {
-    let share: number;
-    if (c === alexClient) {
-      share = c.revenue * ALEX_CLIENT_SHARE_RATE;
-      clientShareRates[c.id] = ALEX_CLIENT_SHARE_RATE;
-    } else if (c === adrielClient) {
-      share = c.revenue * ADRIEL_CLIENT_SHARE_RATE;
-      clientShareRates[c.id] = ADRIEL_CLIENT_SHARE_RATE;
-    } else {
-      share = c.revenueShare || 0;
-    }
-    clientShares[c.id] = share;
-    return sum + share;
+  const agencyRevenue = clientsEarned + offerGrossRevenue;
+  const totalCashCollected = clientsCashCollected + (o.cashCollected || 0);
+
+  const teamCostValues: Record<string, number> = {};
+  const totalTeamCosts = month.teamCosts.reduce((sum, tc) => {
+    const v = teamCostValue(tc, totalCashCollected);
+    teamCostValues[tc.id] = v;
+    return sum + v;
   }, 0);
+  const softwareTotal = sumItems(month.software);
+  const totalExpenses = totalTeamCosts + softwareTotal;
 
-  const grossPortfolioRevenue = totalPortfolioRevenue + totalOtherRevenue - totalClientRevenueShare;
-
-  const setterPayroll = totalPortfolioRevenue * (month.expenses.setterPayrollPercent / 100);
-  const closerPayroll = totalPortfolioRevenue * (month.expenses.closerPayrollPercent / 100);
-  const cmoBasePay = CMO_BASE_PAY_USD;
-  const cmoEquityAlex = (alexClient?.revenue ?? 0) * (month.expenses.cmoEquityAlexPercent / 100);
-  const cmoEquityAdriel = (adrielClient?.revenue ?? 0) * (month.expenses.cmoEquityAdrielPercent / 100);
-  const softwareTotal = month.expenses.software.reduce((sum, s) => sum + (s.amount || 0), 0);
-  const bonuses = Math.floor(Math.max(0, totalPortfolioRevenue) / BONUS_TIER_REVENUE) * BONUS_PER_TIER;
-
-  const totalExpenses =
-    setterPayroll + closerPayroll + cmoBasePay + cmoEquityAlex + cmoEquityAdriel + bonuses + softwareTotal;
-
-  const netPersonalIncomeUsd = grossPortfolioRevenue - totalExpenses;
+  const netPersonalIncomeUsd = agencyRevenue - totalExpenses;
   const netPersonalIncomeNzd = netPersonalIncomeUsd * month.fxRateUsdToNzd;
 
   return {
-    totalPortfolioRevenue,
-    totalOtherRevenue,
-    clientShares,
-    clientShareRates,
-    totalClientRevenueShare,
-    grossPortfolioRevenue,
-    setterPayroll,
-    closerPayroll,
-    cmoBasePay,
-    cmoEquityAlex,
-    cmoEquityAdriel,
+    clientEarnings,
+    offerGrossRevenue,
+    agencyRevenue,
+    totalCashCollected,
+    teamCostValues,
+    totalTeamCosts,
     softwareTotal,
-    bonuses,
     totalExpenses,
     netPersonalIncomeUsd,
     netPersonalIncomeNzd,
