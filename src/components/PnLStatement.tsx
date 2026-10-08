@@ -14,45 +14,14 @@ const ADD_BUTTON_CLASS = 'text-xs text-indigo-600 hover:text-indigo-700 font-med
 const REMOVE_BUTTON_CLASS =
   'opacity-0 group-hover:opacity-100 text-gray-300 hover:text-red-500 transition-opacity text-xs';
 
-function SectionHeader({ children }: { children: React.ReactNode }) {
-  return (
-    <tr>
-      <td colSpan={3} className="pt-2 pb-2 text-xs font-semibold tracking-wider text-gray-500 uppercase">
-        {children}
-      </td>
-    </tr>
-  );
-}
+const BOX_CLASS = 'rounded-xl border border-gray-200 bg-white/70 p-4';
 
-function SpacerRow() {
+function Box({ title, children }: { title?: string; children: React.ReactNode }) {
   return (
-    <tr>
-      <td colSpan={3} className="h-2" />
-    </tr>
-  );
-}
-
-function TotalRow({ label, value, underline }: { label: string; value: number; underline?: boolean }) {
-  return (
-    <tr className="border-t border-gray-200">
-      <td className="py-2 font-semibold text-sm text-gray-900">{label}</td>
-      <td className="py-2 w-28" />
-      <td className="py-2 w-28">
-        <ComputedCurrency value={formatCurrency(value)} bold underline={underline} />
-      </td>
-    </tr>
-  );
-}
-
-function InputRow({ label, value, onChange }: { label: string; value: number; onChange: (v: number) => void }) {
-  return (
-    <tr className="border-b border-gray-100">
-      <td className="py-2 text-sm text-gray-800">{label}</td>
-      <td className="py-2 w-28">
-        <CurrencyInput value={value} onChange={onChange} />
-      </td>
-      <td className="py-2 w-28" />
-    </tr>
+    <div className={BOX_CLASS}>
+      {title && <div className="mb-2 text-xs font-semibold tracking-wider text-gray-500 uppercase">{title}</div>}
+      {children}
+    </div>
   );
 }
 
@@ -118,7 +87,7 @@ function ClientBox({
   const r = calcClient(client);
   const isGo = client.type === 'go';
   return (
-    <div className="group rounded-xl border border-gray-200 bg-white/70 p-4">
+    <div className={`group ${BOX_CLASS}`}>
       <div className="flex items-center gap-2 mb-2">
         <span
           className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wider uppercase ${
@@ -224,7 +193,7 @@ export default function PnLStatement({ month, onChange }: Props) {
       </div>
       <LiveDot className="mb-6" />
 
-      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,1fr)] gap-8 items-start">
+      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,1fr)] gap-6 items-start">
       <div>
       <div className="flex items-center justify-between mb-3">
         <span className="text-xs font-semibold tracking-wider text-gray-500 uppercase">Clients</span>
@@ -244,73 +213,75 @@ export default function PnLStatement({ month, onChange }: Props) {
       </div>
       </div>
 
-      <table className="w-full border-collapse">
-        <tbody>
-          <SectionHeader>Other Revenue: Own Offer</SectionHeader>
-          <InputRow label="Cash Collected" value={month.ownOffer.cashCollected} onChange={(v) => updateOwnOffer({ cashCollected: v })} />
-          <InputRow label="Less: Fees" value={month.ownOffer.fees} onChange={(v) => updateOwnOffer({ fees: v })} />
-          <InputRow label="Less: Refunds" value={month.ownOffer.refunds} onChange={(v) => updateOwnOffer({ refunds: v })} />
-          <InputRow label="Less: Ad Spend" value={month.ownOffer.adSpend} onChange={(v) => updateOwnOffer({ adSpend: v })} />
-          <TotalRow label="Offer Gross Revenue" value={t.offerGrossRevenue} />
+      <div className="space-y-3">
+        <Box title="Other Revenue: Own Offer">
+          <BoxRow label="Cash Collected">
+            <CurrencyInput value={month.ownOffer.cashCollected} onChange={(v) => updateOwnOffer({ cashCollected: v })} />
+          </BoxRow>
+          <BoxRow label="Less: Fees">
+            <CurrencyInput value={month.ownOffer.fees} onChange={(v) => updateOwnOffer({ fees: v })} />
+          </BoxRow>
+          <BoxRow label="Less: Refunds">
+            <CurrencyInput value={month.ownOffer.refunds} onChange={(v) => updateOwnOffer({ refunds: v })} />
+          </BoxRow>
+          <BoxRow label="Less: Ad Spend">
+            <CurrencyInput value={month.ownOffer.adSpend} onChange={(v) => updateOwnOffer({ adSpend: v })} />
+          </BoxRow>
+          <BoxRow label="Offer Gross Revenue" bold>
+            <ComputedCurrency value={formatCurrency(t.offerGrossRevenue)} bold />
+          </BoxRow>
+        </Box>
 
-          <SpacerRow />
-          <SectionHeader>Agency Revenue</SectionHeader>
+        <Box title="Agency Revenue">
           {month.clients.map((c) => (
-            <tr key={c.id} className="border-b border-gray-100">
-              <td className="py-2 pr-2 text-sm text-gray-800">
-                {c.name || 'Untitled client'}
-                <span className="ml-1 text-xs text-gray-400">({pctOfAgency(t.clientEarnings[c.id])})</span>
-              </td>
-              <td className="py-2 w-28">
-                <ComputedCurrency value={formatCurrency(t.clientEarnings[c.id])} />
-              </td>
-              <td className="py-2 w-28" />
-            </tr>
+            <BoxRow
+              key={c.id}
+              label={
+                <>
+                  {c.name || 'Untitled client'}
+                  <span className="ml-1 text-xs text-gray-400">({pctOfAgency(t.clientEarnings[c.id])})</span>
+                </>
+              }
+            >
+              <ComputedCurrency value={formatCurrency(t.clientEarnings[c.id])} />
+            </BoxRow>
           ))}
-          <tr className="border-b border-gray-100">
-            <td className="py-2 pr-2 text-sm text-gray-800">
-              Own Offer
-              <span className="ml-1 text-xs text-gray-400">({pctOfAgency(t.offerGrossRevenue)})</span>
-            </td>
-            <td className="py-2 w-28">
-              <ComputedCurrency value={formatCurrency(t.offerGrossRevenue)} />
-            </td>
-            <td className="py-2 w-28" />
-          </tr>
-          <TotalRow label="Total Agency Revenue" value={t.agencyRevenue} />
-        </tbody>
-      </table>
+          <BoxRow
+            label={
+              <>
+                Own Offer
+                <span className="ml-1 text-xs text-gray-400">({pctOfAgency(t.offerGrossRevenue)})</span>
+              </>
+            }
+          >
+            <ComputedCurrency value={formatCurrency(t.offerGrossRevenue)} />
+          </BoxRow>
+          <BoxRow label="Total Agency Revenue" bold>
+            <ComputedCurrency value={formatCurrency(t.agencyRevenue)} bold />
+          </BoxRow>
+        </Box>
+      </div>
 
-      <table className="w-full border-collapse">
-        <tbody>
-          <SectionHeader>Less: Team Costs</SectionHeader>
-          <tr>
-            <td colSpan={3} className="pb-1 text-xs text-gray-400">
-              % costs are of total cash collected ({formatCurrency(t.totalCashCollected)})
-            </td>
-          </tr>
+      <div className="space-y-3">
+        <Box title="Less: Team Costs">
+          <div className="pb-1 text-xs text-gray-400">
+            % costs are of total cash collected ({formatCurrency(t.totalCashCollected)})
+          </div>
           {month.teamCosts.map((tc) => (
-            <tr key={tc.id} className="group border-b border-gray-100">
-              <td className="py-2 pr-2 text-sm text-gray-800">
-                <div className="flex items-center gap-2">
-                  <TextInput value={tc.name} onChange={(v) => updateTeamCost(tc.id, { name: v })} className="flex-1 min-w-0" />
-                  <div className="flex shrink-0 rounded-md border border-gray-200 text-[11px] overflow-hidden">
-                    {(['amount', 'percent'] as const).map((mode) => (
-                      <button
-                        key={mode}
-                        onClick={() => updateTeamCost(tc.id, { mode })}
-                        className={`px-1.5 py-0.5 ${tc.mode === mode ? 'bg-indigo-600 text-white' : 'text-gray-500 hover:bg-gray-100'}`}
-                      >
-                        {mode === 'amount' ? '$' : '%'}
-                      </button>
-                    ))}
-                  </div>
-                  <button onClick={() => removeTeamCost(tc.id)} className={REMOVE_BUTTON_CLASS} aria-label="Remove team cost">
-                    ✕
+            <div key={tc.id} className="group flex items-center gap-2 py-1.5">
+              <TextInput value={tc.name} onChange={(v) => updateTeamCost(tc.id, { name: v })} className="flex-1 min-w-0 text-sm text-gray-700" />
+              <div className="flex shrink-0 rounded-md border border-gray-200 text-[11px] overflow-hidden">
+                {(['amount', 'percent'] as const).map((mode) => (
+                  <button
+                    key={mode}
+                    onClick={() => updateTeamCost(tc.id, { mode })}
+                    className={`px-1.5 py-0.5 ${tc.mode === mode ? 'bg-indigo-600 text-white' : 'text-gray-500 hover:bg-gray-100'}`}
+                  >
+                    {mode === 'amount' ? '$' : '%'}
                   </button>
-                </div>
-              </td>
-              <td className="py-2 w-28">
+                ))}
+              </div>
+              <div className="w-44 shrink-0">
                 {tc.mode === 'percent' ? (
                   <div className="flex items-center justify-end gap-2 text-sm">
                     <PercentInline value={tc.percent} onChange={(v) => updateTeamCost(tc.id, { percent: v })} />
@@ -319,43 +290,40 @@ export default function PnLStatement({ month, onChange }: Props) {
                 ) : (
                   <CurrencyInput value={tc.amount} onChange={(v) => updateTeamCost(tc.id, { amount: v })} />
                 )}
-              </td>
-              <td className="py-2 w-28" />
-            </tr>
-          ))}
-          <tr>
-            <td colSpan={3} className="pt-1 pb-2">
-              <button onClick={addTeamCost} className={ADD_BUTTON_CLASS}>
-                + Add team cost
+              </div>
+              <button onClick={() => removeTeamCost(tc.id)} className={REMOVE_BUTTON_CLASS} aria-label="Remove team cost">
+                ✕
               </button>
-            </td>
-          </tr>
-          <TotalRow label="Total Team Costs" value={t.totalTeamCosts} underline />
+            </div>
+          ))}
+          <button onClick={addTeamCost} className={`${ADD_BUTTON_CLASS} py-1`}>
+            + Add team cost
+          </button>
+          <BoxRow label="Total Team Costs" bold>
+            <ComputedCurrency value={formatCurrency(t.totalTeamCosts)} bold />
+          </BoxRow>
+        </Box>
 
-          <SpacerRow />
-          <SectionHeader>Less: Additional Software Costs</SectionHeader>
-          <tr>
-            <td colSpan={2} className="py-2">
-              <LineItemList
-                items={month.software}
-                onChange={(software) => onChange((m) => ({ ...m, software }))}
-                addLabel="+ Add software"
-              />
-            </td>
-            <td className="py-2 w-28" />
-          </tr>
-          <TotalRow label="Total Software Costs" value={t.softwareTotal} underline />
+        <Box title="Less: Additional Software Costs">
+          <div className="py-1.5">
+            <LineItemList
+              items={month.software}
+              onChange={(software) => onChange((m) => ({ ...m, software }))}
+              addLabel="+ Add software"
+            />
+          </div>
+          <BoxRow label="Total Software Costs" bold>
+            <ComputedCurrency value={formatCurrency(t.softwareTotal)} bold />
+          </BoxRow>
+        </Box>
 
-          <SpacerRow />
-          <tr>
-            <td className="py-2 font-bold text-base text-gray-900">Net Profit (USD)</td>
-            <td className="py-2 w-28" />
-            <td className="py-2 w-28">
-              <ComputedCurrency value={formatCurrency(t.netPersonalIncomeUsd)} bold />
-            </td>
-          </tr>
-          <tr>
-            <td className="py-2 font-bold text-base text-gray-900">
+        <Box>
+          <div className="flex items-center justify-between py-1.5">
+            <span className="font-bold text-base text-gray-900">Net Profit (USD)</span>
+            <ComputedCurrency value={formatCurrency(t.netPersonalIncomeUsd)} bold />
+          </div>
+          <div className="flex items-center justify-between py-1.5 border-t border-gray-200">
+            <div className="font-bold text-base text-gray-900">
               Net Profit (NZD)
               <span className="block mt-1 font-normal text-xs text-gray-400">
                 FX rate:
@@ -370,14 +338,11 @@ export default function PnLStatement({ month, onChange }: Props) {
                   className="w-16 ml-1 bg-transparent border-b border-gray-300 outline-none focus:bg-indigo-50 rounded px-1 text-gray-600"
                 />
               </span>
-            </td>
-            <td className="py-2 w-28" />
-            <td className="py-2 w-28">
-              <ComputedCurrency value={formatCurrency(t.netPersonalIncomeNzd)} bold />
-            </td>
-          </tr>
-        </tbody>
-      </table>
+            </div>
+            <ComputedCurrency value={formatCurrency(t.netPersonalIncomeNzd)} bold />
+          </div>
+        </Box>
+      </div>
       </div>
     </div>
   );
