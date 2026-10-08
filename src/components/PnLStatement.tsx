@@ -13,6 +13,10 @@ interface Props {
 const ADD_BUTTON_CLASS = 'text-xs text-indigo-600 hover:text-indigo-700 font-medium';
 const REMOVE_BUTTON_CLASS =
   'opacity-0 group-hover:opacity-100 text-gray-300 hover:text-red-500 transition-opacity text-xs';
+// Row-level remove buttons hang in the card's right padding so list values
+// stay flush with the totals below them.
+const ROW_REMOVE_BUTTON_CLASS = `absolute -right-3.5 top-1/2 -translate-y-1/2 ${REMOVE_BUTTON_CLASS}`;
+const COLUMN_HEADER_CLASS = 'flex items-center justify-between h-5 text-xs font-semibold tracking-wider text-gray-500 uppercase';
 
 const BOX_CLASS = 'rounded-xl border border-gray-200 bg-white/70 p-4';
 
@@ -36,15 +40,15 @@ function LineItemList({
   addLabel: string;
 }) {
   return (
-    <div className="space-y-1">
+    <div>
       {items.map((s) => (
-        <div key={s.id} className="group flex items-center gap-2">
+        <div key={s.id} className="group relative flex items-center gap-2 py-1.5">
           <TextInput
             value={s.name}
             onChange={(v) => onChange(items.map((i) => (i.id === s.id ? { ...i, name: v } : i)))}
-            className="flex-1 min-w-0 text-sm text-gray-700"
+            className="flex-1 min-w-0 -ml-1 text-sm text-gray-700"
           />
-          <div className="w-28">
+          <div className="w-32 shrink-0">
             <CurrencyInput
               value={s.amount}
               onChange={(v) => onChange(items.map((i) => (i.id === s.id ? { ...i, amount: v } : i)))}
@@ -52,14 +56,14 @@ function LineItemList({
           </div>
           <button
             onClick={() => onChange(items.filter((i) => i.id !== s.id))}
-            className={REMOVE_BUTTON_CLASS}
+            className={ROW_REMOVE_BUTTON_CLASS}
             aria-label="Remove software"
           >
             ✕
           </button>
         </div>
       ))}
-      <button onClick={() => onChange([...items, { id: uid(), name: 'New software', amount: 0 }])} className={ADD_BUTTON_CLASS}>
+      <button onClick={() => onChange([...items, { id: uid(), name: 'New software', amount: 0 }])} className={`${ADD_BUTTON_CLASS} py-1`}>
         {addLabel}
       </button>
     </div>
@@ -123,8 +127,8 @@ function ClientBox({
           >
             <ComputedCurrency value={formatCurrency(r.revShare)} />
           </BoxRow>
-          <div className="py-1.5">
-            <div className="text-sm text-gray-700 mb-1">Add: Software costs</div>
+          <div className="pt-1.5">
+            <div className="text-sm text-gray-700">Add: Software costs</div>
             <LineItemList items={client.software} onChange={(software) => onUpdate({ software })} addLabel="+ Add software" />
           </div>
         </>
@@ -136,8 +140,8 @@ function ClientBox({
           <BoxRow label="Less: Ad Spend">
             <CurrencyInput value={client.adSpend} onChange={(v) => onUpdate({ adSpend: v })} />
           </BoxRow>
-          <div className="py-1.5">
-            <div className="text-sm text-gray-700 mb-1">Less: Software costs</div>
+          <div className="pt-1.5">
+            <div className="text-sm text-gray-700">Less: Software costs</div>
             <LineItemList items={client.software} onChange={(software) => onUpdate({ software })} addLabel="+ Add software" />
           </div>
           <BoxRow label="Net Revenue" bold>
@@ -194,10 +198,10 @@ export default function PnLStatement({ month, onChange }: Props) {
       <LiveDot className="mb-6" />
 
       <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,1fr)] gap-6 items-start">
-      <div>
-      <div className="flex items-center justify-between mb-3">
-        <span className="text-xs font-semibold tracking-wider text-gray-500 uppercase">Clients</span>
-        <div className="flex gap-4">
+      <div className="space-y-3">
+      <div className={COLUMN_HEADER_CLASS}>
+        <span>Clients</span>
+        <div className="flex gap-4 normal-case tracking-normal">
           <button onClick={() => addClient('go')} className={ADD_BUTTON_CLASS}>
             + GO client
           </button>
@@ -214,6 +218,7 @@ export default function PnLStatement({ month, onChange }: Props) {
       </div>
 
       <div className="space-y-3">
+        <div className={COLUMN_HEADER_CLASS}>Revenue</div>
         <Box title="Other Revenue: Own Offer">
           <BoxRow label="Cash Collected">
             <CurrencyInput value={month.ownOffer.cashCollected} onChange={(v) => updateOwnOffer({ cashCollected: v })} />
@@ -263,13 +268,14 @@ export default function PnLStatement({ month, onChange }: Props) {
       </div>
 
       <div className="space-y-3">
+        <div className={COLUMN_HEADER_CLASS}>Costs &amp; Profit</div>
         <Box title="Less: Team Costs">
           <div className="pb-1 text-xs text-gray-400">
             % costs are of total cash collected ({formatCurrency(t.totalCashCollected)})
           </div>
           {month.teamCosts.map((tc) => (
-            <div key={tc.id} className="group flex items-center gap-2 py-1.5">
-              <TextInput value={tc.name} onChange={(v) => updateTeamCost(tc.id, { name: v })} className="flex-1 min-w-0 text-sm text-gray-700" />
+            <div key={tc.id} className="group relative flex items-center gap-2 py-1.5">
+              <TextInput value={tc.name} onChange={(v) => updateTeamCost(tc.id, { name: v })} className="flex-1 min-w-0 -ml-1 text-sm text-gray-700" />
               <div className="flex shrink-0 rounded-md border border-gray-200 text-[11px] overflow-hidden">
                 {(['amount', 'percent'] as const).map((mode) => (
                   <button
@@ -281,17 +287,19 @@ export default function PnLStatement({ month, onChange }: Props) {
                   </button>
                 ))}
               </div>
-              <div className="w-44 shrink-0">
+              <div className="w-16 shrink-0 text-right text-sm">
+                {tc.mode === 'percent' && (
+                  <PercentInline value={tc.percent} onChange={(v) => updateTeamCost(tc.id, { percent: v })} />
+                )}
+              </div>
+              <div className="w-32 shrink-0">
                 {tc.mode === 'percent' ? (
-                  <div className="flex items-center justify-end gap-2 text-sm">
-                    <PercentInline value={tc.percent} onChange={(v) => updateTeamCost(tc.id, { percent: v })} />
-                    <ComputedCurrency value={formatCurrency(t.teamCostValues[tc.id])} />
-                  </div>
+                  <ComputedCurrency value={formatCurrency(t.teamCostValues[tc.id])} />
                 ) : (
                   <CurrencyInput value={tc.amount} onChange={(v) => updateTeamCost(tc.id, { amount: v })} />
                 )}
               </div>
-              <button onClick={() => removeTeamCost(tc.id)} className={REMOVE_BUTTON_CLASS} aria-label="Remove team cost">
+              <button onClick={() => removeTeamCost(tc.id)} className={ROW_REMOVE_BUTTON_CLASS} aria-label="Remove team cost">
                 ✕
               </button>
             </div>
@@ -305,7 +313,7 @@ export default function PnLStatement({ month, onChange }: Props) {
         </Box>
 
         <Box title="Less: Additional Software Costs">
-          <div className="py-1.5">
+          <div>
             <LineItemList
               items={month.software}
               onChange={(software) => onChange((m) => ({ ...m, software }))}
